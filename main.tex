@@ -1,0 +1,393 @@
+\documentclass[11pt]{beamer}
+\usetheme{Madrid}
+\usefonttheme{serif}
+
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+
+% Korean language support
+\usepackage{kotex}
+
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{caption}
+
+\DeclareMathOperator{\sen}{sen}
+\DeclareMathOperator{\tg}{tg}
+
+\setbeamertemplate{caption}[numbered]
+
+\author[Eungseo Kim]{Eungseo Kim}
+\title[MegaBlocks]{Paper Presentation: \\ MegaBlocks: Efficient Sparse Training with Mixture-of-Experts}
+\newcommand{\email}{juniormoo@snu.ac.kr}
+\setbeamertemplate{navigation symbols}{} 
+\institute[]{Seoul National University, Biointelligence Lab} 
+\date{\today} 
+
+\bibliographystyle{apalike}
+
+
+
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}{Original Paper Information}
+    \begin{block}{Original Authors}
+    Trevor Gale\textsuperscript{1}, Deepak Narayanan\textsuperscript{2}, Cliff Young\textsuperscript{3}, Matei Zaharia\textsuperscript{1}
+    \end{block}
+    
+    \begin{block}{Publication}
+    MLSys 2023 - Proceedings of Machine Learning and Systems
+    \end{block}
+    
+    \begin{block}{Affiliations}
+    \textsuperscript{1} Stanford University, Stanford, California, USA \\
+    \textsuperscript{2} Microsoft Research, Redmond, Washington, USA \\
+    \textsuperscript{3} Google Research, Mountain View, California, USA
+    \end{block}
+    
+\end{frame}
+
+\begin{frame}{Table of Contents}
+\tableofcontents 
+\end{frame}
+
+\section{TL;DR}
+\begin{frame}{TL;DR}
+    \begin{block}{The Problem}
+    \begin{itemize}
+        \item Dynamic routing leads to uneven token distribution across experts
+        \item Existing approach: Drop excess tokens, pad insufficient experts
+    \end{itemize}
+    \end{block}
+    
+    \begin{block}{MegaBlocks Solution}
+    \begin{itemize}
+        \item Never drop tokens!
+        \item Adapt block-sparse operations
+        \item No performance loss, significant speedup
+    \end{itemize}
+    \end{block}
+\end{frame}
+
+\section{Introduction}
+
+\begin{frame}{What is Mixture-of-Experts (MoE)?}
+    \begin{block}{Definition}
+    MoE is an architecture that combines multiple expert models to achieve high capacity efficiently by routing each input to a small subset of experts.
+    \end{block}
+    
+    \begin{block}{Key Components}
+    \begin{itemize}
+        \item \textbf{M experts}: neural networks specializing in different sub-problems
+        \item \textbf{Router}: decides which experts to consult for each input
+        \item \textbf{Gating network}: computes mixture weights for experts; typically linear
+    \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}{MoE Architecture Details}
+    \begin{columns}[T]
+        \column{0.5\textwidth}
+        \raggedright
+        \begin{block}{Mathematical Formulation}
+        \footnotesize
+        For each token $x$ (or batch $X$), MoE routing works as follows \cite{shazeer2017outrageously, fedus2022switch}:
+        \begin{itemize}
+            \footnotesize
+            \item Router computes logits: $z_m = x^T \theta^{(m)}$ for each expert $m \in [M]$, where $\theta^{(m)} \in \mathbb{R}^d$ is the router parameter for expert $m$
+            \item Gate probabilities: $p = \text{softmax}(z)$
+            \item Top-k selection: choose $k$ experts with highest probabilities
+            \item Expert networks $\{\phi_m\}_{m=1}^M$ (typically FFNs) process routed tokens
+            \item Output: weighted combination of selected experts
+        \end{itemize}
+        \end{block}
+        
+        \column{0.45\textwidth}
+        \raggedright
+        \begin{center}
+        \includegraphics[width=0.85\textwidth]{images/switch_transformer_figure_2.png}
+        
+        \tiny Figure 1: Switch Transformer architecture.
+        \end{center}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{MoE Architecture in MegaBlocks}
+    \begin{center}
+    \includegraphics[width=0.95\textwidth]{images/megablocks_moe.png}
+    
+    \tiny Figure 2: MoE architecture introduced by MegaBlocks.
+    \end{center}
+\end{frame}
+
+\begin{frame}{What is Sparsity?}
+    \begin{block}{Conditional Computation}
+    Sparsity uses the idea of \textbf{conditional computation}. While in dense models all parameters are used for all inputs, sparsity allows us to only run some parts of the whole system.
+    \end{block}
+    
+    \begin{block}{Scaling Without Computation Overhead}
+    Shazeer's work showed that conditional computation allows scaling model size without increasing computation proportionally—thousands of experts can be used in each MoE layer.
+    \end{block}
+    
+    \begin{alertblock}{Challenges}
+    \begin{itemize}
+        \item \textbf{Uneven batch sizes}: If 10 tokens are batched, 5 might go to one expert and 5 to different experts
+        \item \textbf{Underutilization}: This leads to uneven batch sizes and inefficient hardware usage
+    \end{itemize}
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}{Gating Mechanism}
+    \begin{block}{Learned Gating Network}
+    A learned gating network $G$ decides which experts $E$ to send input to:
+    \[
+    y = \sum_{i=1}^{n} G(x)_i E_i(x)
+    \]
+    \end{block}
+    
+    \begin{block}{Efficiency Through Sparsity}
+    When $G(x)_i = 0$, we don't need to compute $E_i(x)$, saving computation.
+    \end{block}
+    
+    \begin{block}{Simple Gating Function}
+    Traditional setup uses a simple network with softmax:
+    \[
+    G_\sigma(x) = \text{Softmax}(x \cdot W_g)
+    \]
+    \end{block}
+\end{frame}
+
+\begin{frame}{Noisy Top-k Gating}
+    \begin{block}{Adding Noise for Load Balancing}
+    Shazeer's work introduced Noisy Top-k Gating with tunable noise:
+    \end{block}
+    
+    \begin{enumerate}
+        \item \textbf{Add noise:}
+        \[
+        H(x)_i = (x \cdot W_g)_i + \text{StandardNormal}() \cdot \text{Softplus}((x \cdot W_{\text{noise}})_i)
+        \]
+        
+        \item \textbf{Keep top k:}
+        \[
+        \text{KeepTopK}(v,k)_i = \begin{cases}
+        v_i & \text{if } v_i \text{ is in top } k \text{ elements} \\
+        -\infty & \text{otherwise}
+        \end{cases}
+        \]
+        
+        \item \textbf{Apply softmax:}
+        \[
+        G(x) = \text{Softmax}(\text{KeepTopK}(H(x), k))
+        \]
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}{Why Top-k and Noise?}
+    \begin{block}{Benefits of Low k}
+    By using a low k (e.g., 1 or 2), we can train and run inference much faster than if many experts were activated.
+    \end{block}
+    
+    \begin{block}{Why More Than One Expert?}
+    Initial conjecture: routing to more than one expert was needed for the gate to learn how to route to different experts. Switch Transformers later revisited this decision.
+    \end{block}
+    
+    \begin{block}{Why Add Noise?}
+    Noise is added for \textbf{load balancing} across experts!
+    \end{block}
+\end{frame} 
+
+\begin{frame}[shrink]{Prior MoE Transformer Training}
+    \begin{columns}[T]
+        \column{0.55\textwidth}
+        \raggedright
+        \begin{block}{Fixed Expert Capacity Constraint}
+        \scriptsize
+        Prior work defines \textbf{fixed expert capacity} \cite{fedus2022switch}:
+        \begin{itemize}
+            \scriptsize
+            \item \textbf{Token dropping}: Excess tokens dropped
+            \item \textbf{Padding}: Insufficient experts padded
+            \item Static buffer allocation $\rightarrow$ inefficiency
+        \end{itemize}
+        \end{block}
+        
+        \vspace{-0.2cm}
+        
+        \begin{block}{Expert Capacity Formula}
+        \scriptsize
+        \[
+        \text{Expert Capacity} = \frac{\text{num tokens}}{\text{num experts}} \times \text{capacity factor}
+        \]
+        \vspace{-0.2cm}
+        \begin{itemize}
+            \scriptsize
+            \item Capacity factor: multiplier on uniform distribution
+            \item Tradeoff: computation vs. quality
+            \item Higher factor $\rightarrow$ less dropping, more padding
+        \end{itemize}
+        \end{block}
+        
+        \column{0.4\textwidth}
+        \raggedright
+        \begin{center}
+        \includegraphics[width=0.75\textwidth]{images/3-a.png}
+        
+        \tiny Figure: Expert capacity in Switch Transformer.
+        \end{center}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Expert Capacity Factor}
+    \begin{columns}[T]
+        \column{0.5\textwidth}
+        \raggedright
+        \begin{block}{Impact of Token Dropping}
+        \footnotesize
+        Token dropping significantly impacts model quality:
+        \begin{itemize}
+            \footnotesize
+            \item Capacity factor = 1: 0.15 validation loss reduction
+            \item Avoiding token dropping: 0.26 reduction (\textbf{1.73× larger})
+            \item Higher capacity enables better performance than dense models
+        \end{itemize}
+        \end{block}
+        
+        \column{0.45\textwidth}
+        \raggedright
+        \begin{center}
+        \includegraphics[width=0.95\textwidth]{images/capacity.png}
+        
+        \tiny Figure: Effect of capacity factor on model quality.
+        \end{center}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Idea: Block Diagonal Reformulation (1)}
+    \begin{center}
+    \includegraphics[width=0.85\textwidth]{images/block-diagonal.png}
+    
+    \medskip
+    
+    \footnotesize
+    MegaBlocks reformulates MoE computation as block-diagonal matrix operations, \\
+    enabling efficient GPU implementation without token dropping.
+    \end{center}
+\end{frame}
+
+\begin{frame}{Idea: Block Diagonal Reformulation (2)}
+    \begin{center}
+    \includegraphics[width=0.85\textwidth]{images/load-imbalanced-routing.png}
+    
+    \medskip
+    
+    \footnotesize
+    Handling load-imbalanced routing through block-sparse operations \\
+    allows dynamic token assignment without capacity constraints.
+    \end{center}
+\end{frame}
+
+\begin{frame}{Introduction}
+\begin{itemize}
+    \item \textbf{Mixture-of-Experts (MoE)} models scale model capacity without proportional increase in computation
+    \item Current frameworks restrict dynamic routing to satisfy software/hardware constraints
+    \item This forces a tradeoff between model quality and hardware efficiency
+    \item Users must choose between dropping tokens or wasting computation on padding
+\end{itemize}
+\end{frame}
+
+\section{Content}
+
+\begin{frame}{MegaBlocks Approach}
+    \begin{block}{Key Innovation}
+    Reformulate MoE computation in terms of \textbf{block-sparse operations}
+    \end{block}
+    
+    \begin{block}{New Block-Sparse GPU Kernels}
+    Efficiently handle the dynamism present in MoEs
+    \end{block}
+    
+    \begin{block}{Benefits}
+    \begin{itemize}
+        \item Never drops tokens
+        \item Maps efficiently to modern hardware
+        \item Enables significant speedups
+    \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}[shrink]{Preliminaries: Sparse Matrix Product Notation}
+    \begin{block}{Notation System}
+    \footnotesize
+    Borrowed from Triton (Tillet et al., 2019) to describe sparse/dense matrix multiplication operations
+    \end{block}
+    
+    \begin{block}{Three-Character String Format}
+    \footnotesize
+    \begin{itemize}
+        \item Each character is either \textbf{S} (Sparse) or \textbf{D} (Dense)
+        \item Order: \textbf{Output} → \textbf{Left Input} → \textbf{Right Input}
+    \end{itemize}
+    \end{block}
+    
+    \begin{block}{Examples}
+    \footnotesize
+    \begin{itemize}
+        \item \textbf{SDD}: Sparse output, Dense × Dense inputs
+        \begin{itemize}
+            \item Also known as Sampled Dense-Dense Matrix Multiplication (SDDMM)
+        \end{itemize}
+        \item \textbf{DSD} vs \textbf{DDS}: Different forms of Sparse Matrix-Dense Matrix Multiplication (SpMM)
+        \item \textbf{SDD\textsuperscript{T}}: SDD with transposed right-hand input
+    \end{itemize}
+    \end{block}
+\end{frame}
+
+
+
+\begin{frame}{Conclusion}
+\begin{itemize}
+    \item MegaBlocks presents an efficient system for MoE training on GPUs
+    \item Block-sparse operations eliminate the quality-efficiency tradeoff
+    \item Significant performance improvements over existing frameworks
+    \item Enables scalable MoE training without token dropping
+\end{itemize}
+\end{frame}
+
+\section{Discussion}
+\begin{frame}{Discussion Question}
+    \begin{block}{Hardware Trend vs. MoE Direction}
+    MoE models use less computation relative to their model size. \\
+    However, on modern GPUs, computation is becoming relatively cheap while memory is increasingly expensive.
+    \end{block}
+    
+    \begin{alertblock}{Key Question}
+    This seems opposite to hardware trends—does this direction still make sense?
+    \end{alertblock}
+    
+\end{frame}
+
+\section{References}
+\begin{frame}[allowframebreaks]{References}
+    \bibliography{references}
+\end{frame}
+
+\begin{frame}
+
+\begin{center}
+    Thank you!
+    
+    \email
+\end{center}
+
+
+\end{frame}
+
+\end{document}

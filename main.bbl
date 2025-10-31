@@ -1,0 +1,14 @@
+\begin{thebibliography}{}
+
+\bibitem[Fedus et~al., 2022]{fedus2022switch}
+Fedus, W., Zoph, B., and Shazeer, N. (2022).
+\newblock Switch transformers: Scaling to trillion parameter models with simple and efficient sparsity.
+\newblock {\em Journal of Machine Learning Research}.
+\newblock JMLR.
+
+\bibitem[Shazeer et~al., 2017]{shazeer2017outrageously}
+Shazeer, N., Mirhoseini, A., Maziarz, K., Davis, A., Le, Q., Hinton, G., and Dean, J. (2017).
+\newblock Outrageously large neural networks: The sparsely-gated mixture-of-experts layer.
+\newblock In {\em International Conference on Learning Representations}.
+
+\end{thebibliography}
