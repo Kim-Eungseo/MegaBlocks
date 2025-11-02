@@ -1,0 +1,33 @@
+\frametitle{dMoE Forward Pass Pseudocode}
+\begin{block}{MegaBlocks dMoE Implementation}
+    \lstset{style=pythonstyle}
+    \begin{lstlisting}
+# x.shape: (num_tokens, hidden_size)
+def dmoe_forward(self, x):
+    # (1) Assign tokens to experts.
+    #
+    # indices.shape: (num_tokens)
+    # weights.shape: (num_tokens)
+    indices, weights = router(x)
+
+    # (2) Create the sparse matrix topology.
+    #
+    # This describes the matrix in Figure of Block Diagonal Reformulation slide.
+    topology = make_topology(indices)
+
+    # (3) Permute the tokens to group by expert.
+    x = padded_gather(x, indices)
+
+    # (4): Compute the expert layers.
+    #
+    # inner_dim = ffn_hidden_size * num_experts
+    # self.w1.shape: (hidden_size, inner_dim)
+    # self.w1.shape: (inner_dim, hidden_size)
+    x = sdd(x, self.w1, topology)
+    x = dsd(x, self.w2)
+
+    # (5) Un-permute the tokens and scale.
+    x = padded_scatter(x, indices)
+    return x * weights
+    \end{lstlisting}
+    \end{block}
