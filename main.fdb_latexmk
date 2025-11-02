@@ -1,15 +1,15 @@
 # Fdb version 4
-["bibtex main"] 1762111463.29963 "main.aux" "main.bbl" "main" 1762111467.55465 0
+["bibtex main"] 0 "main.aux" "main.bbl" "main" 1762111629.99314 -1
   "./references.bib" 1761638890.53033 1752 15e2eba09dd9948ab1a70cdce84f9ef8 ""
   "/usr/share/texlive/texmf-dist/bibtex/bst/base/apalike.bst" 1292289607 24635 604dafcc79f521a11ea73e506e1fbd98 ""
-  "main.aux" 1762111467.2472 7613 15a01151cdbf60e44fd8633d8bf43a17 "pdflatex"
+  "main.aux" 1762111629.7106 7613 15a01151cdbf60e44fd8633d8bf43a17 "pdflatex"
   (generated)
   "main.bbl"
   "main.blg"
   (rewritten before read)
-["pdflatex"] 1762111463.38022 "/home/ngseo/paper/moe/main.tex" "main.pdf" "main" 1762111467.55482 0
+["pdflatex"] 1762111625.81727 "/home/ngseo/paper/moe/main.tex" "main.pdf" "main" 1762111629.99337 0
   "/etc/texmf/web2c/texmf.cnf" 1760778347.91575 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/ngseo/paper/moe/main.tex" 1762111458.85499 23399 414ea1dbfe2f479f9a04f3247bc22381 ""
+  "/home/ngseo/paper/moe/main.tex" 1762111625.47059 23407 a113b28085eeabd5431dfa658597a0d2 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ecbx0600.tfm" 1136768653 3584 ad9fcbc26a2a7bccd6d08b0a5792fbe0 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ecbx0800.tfm" 1136768653 3584 269b66e921ba58750c12f7f1c8ea3ebd ""
@@ -282,13 +282,13 @@
   "images/moe_figure8.png" 1762110731.48036 146641 57e4a6d7bca20f625ed8ea7bf9235192 ""
   "images/moe_figure9.png" 1762110380.70256 215337 3eea6ff45a8be6d55a29766c2c4e5278 ""
   "images/switch_transformer_figure_2.png" 1761543581.40137 180810 ba23eafbeb5552ad637f358965b3c523 ""
-  "main.aux" 1762111467.2472 7613 15a01151cdbf60e44fd8633d8bf43a17 "pdflatex"
+  "main.aux" 1762111629.7106 7613 15a01151cdbf60e44fd8633d8bf43a17 "pdflatex"
   "main.bbl" 1762111463.37289 630 69be7ea7733ec4bfc4481d617b485356 "bibtex main"
-  "main.nav" 1762111467.24834 4702 8dad19db9245011c61e4fbc749849594 "pdflatex"
-  "main.out" 1762111467.24752 879 ff88f6e661c360f6ec0e1246e08de132 "pdflatex"
-  "main.tex" 1762111458.85499 23399 414ea1dbfe2f479f9a04f3247bc22381 ""
-  "main.toc" 1762111467.24834 428 9f3919f4c6d4e4ac3c4d10a33b655212 "pdflatex"
-  "main.vrb" 1762111466.415 1321 be4a5be4107c3746a7ac991f58052fb7 "pdflatex"
+  "main.nav" 1762111629.7116 4702 8dad19db9245011c61e4fbc749849594 "pdflatex"
+  "main.out" 1762111629.7116 879 ff88f6e661c360f6ec0e1246e08de132 "pdflatex"
+  "main.tex" 1762111625.47059 23407 a113b28085eeabd5431dfa658597a0d2 ""
+  "main.toc" 1762111629.7116 428 9f3919f4c6d4e4ac3c4d10a33b655212 "pdflatex"
+  "main.vrb" 1762111628.88124 1321 be4a5be4107c3746a7ac991f58052fb7 "pdflatex"
   (generated)
   "main.aux"
   "main.log"

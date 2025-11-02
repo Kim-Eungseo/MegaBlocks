@@ -674,7 +674,7 @@ def dmoe_forward(self, x):
     
     \begin{alertblock}{Observed Overhead in Weight Gradients}
     \scriptsize
-    \textbf{DSTD operation} (weight gradient with transposed sparse operand) shows overhead:
+    $\text{DS}^T\text{D}$ operation (weight gradient with transposed sparse operand) shows overhead:
     \begin{itemize}
         \scriptsize
         \item Uses \textbf{secondary index} for transpose access (no value copy/transpose)
