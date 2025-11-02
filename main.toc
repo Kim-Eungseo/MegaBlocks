@@ -1,6 +1,9 @@
 \babel@toc {english}{}\relax 
 \beamer@sectionintoc {1}{TL;DR}{4}{0}{1}
-\beamer@sectionintoc {2}{Introduction}{6}{0}{2}
-\beamer@sectionintoc {3}{Content}{18}{0}{3}
-\beamer@sectionintoc {4}{Discussion}{20}{0}{4}
-\beamer@sectionintoc {5}{References}{21}{0}{5}
+\beamer@sectionintoc {2}{Key Concepts}{5}{0}{2}
+\beamer@sectionintoc {3}{Prior Work}{12}{0}{3}
+\beamer@sectionintoc {4}{Idea}{14}{0}{4}
+\beamer@sectionintoc {5}{Implementation Details}{22}{0}{5}
+\beamer@sectionintoc {6}{Experimental Results}{27}{0}{6}
+\beamer@sectionintoc {7}{Discussion}{33}{0}{7}
+\beamer@sectionintoc {8}{Additional References}{34}{0}{8}

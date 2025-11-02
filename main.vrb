@@ -1,33 +1,41 @@
-\frametitle{dMoE Forward Pass Pseudocode}
-\begin{block}{MegaBlocks dMoE Implementation}
-    \lstset{style=pythonstyle}
-    \begin{lstlisting}
-# x.shape: (num_tokens, hidden_size)
-def dmoe_forward(self, x):
-    # (1) Assign tokens to experts.
-    #
-    # indices.shape: (num_tokens)
-    # weights.shape: (num_tokens)
-    indices, weights = router(x)
-
-    # (2) Create the sparse matrix topology.
-    #
-    # This describes the matrix in Figure of Block Diagonal Reformulation slide.
-    topology = make_topology(indices)
-
-    # (3) Permute the tokens to group by expert.
-    x = padded_gather(x, indices)
-
-    # (4): Compute the expert layers.
-    #
-    # inner_dim = ffn_hidden_size * num_experts
-    # self.w1.shape: (hidden_size, inner_dim)
-    # self.w1.shape: (inner_dim, hidden_size)
-    x = sdd(x, self.w1, topology)
-    x = dsd(x, self.w2)
-
-    # (5) Un-permute the tokens and scale.
-    x = padded_scatter(x, indices)
-    return x * weights
-    \end{lstlisting}
+\frametitle{5. Their Solution: Hybrid Block Sparse Format}
+\begin{block}{Kernel Design for Block-Sparse Operations}
+    \scriptsize
+    Extended NVIDIA's CUTLASS GEMM framework to directly handle block-sparse matrices.
     \end{block}
+
+    \begin{columns}[t]
+    \begin{column}{0.48\textwidth}
+        \begin{block}{Hybrid BCSR-COO}
+        \scriptsize
+        \textbf{BCSR:} Blocked Compressed Sparse Row \\
+        \textbf{BCOO:} Blocked Coordinate Format
+
+        \vspace{0.1cm}
+        \textbf{Problem:} SDD needs output block coordinates upfront.
+
+        \textbf{Solution:} Materialize row indices
+        \begin{itemize}
+            \scriptsize
+            \item O(1) coordinate lookup
+            \item ~0.024\% overhead (128×128)
+            \item Maintains row-order access
+        \end{itemize}
+        \end{block}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+        \begin{block}{Transpose Indices}
+        \scriptsize
+        \textbf{Problem:} Transpose access expensive in BCSR.
+
+        \textbf{Solution:} Index array (no value copy)
+        \begin{itemize}
+            \scriptsize
+            \item Points to offset in value array
+            \item Indirect transposed access
+            \item Minimal memory overhead
+        \end{itemize}
+        \end{block}
+    \end{column}
+    \end{columns}

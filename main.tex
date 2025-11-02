@@ -39,7 +39,7 @@
     backgroundcolor=\color{white}
 }
 
-\author[Eungseo Kim]{Eungseo Kim}
+\author[Ngseo Kim]{Eungseo(Ngseo) Kim}
 \title[MegaBlocks]{Paper Presentation: \\ MegaBlocks: Efficient Sparse Training with Mixture-of-Experts}
 \newcommand{\email}{juniormoo@snu.ac.kr}
 \setbeamertemplate{navigation symbols}{} 
@@ -78,7 +78,7 @@
 \end{frame}
 
 \section{TL;DR}
-\begin{frame}{TL;DR}
+\begin{frame}{1. TL;DR}
     \begin{block}{The Problem}
     \begin{itemize}
         \item Sparsity enables efficient scaling through conditional computation
@@ -97,7 +97,8 @@
     \end{block}
 \end{frame}
 
-\begin{frame}{Key Concepts Overview}
+\section{Key Concepts}
+\begin{frame}{2. Key Concepts Overview}
     \begin{block}{Key Concepts to be Covered}
     \begin{itemize}
         \item \textbf{Sparsity}: A concept that activates only necessary components through conditional computation for computational efficiency
@@ -109,9 +110,7 @@
     
 \end{frame}
 
-\section{Introduction}
-
-\begin{frame}{What is Sparsity?}
+\begin{frame}{2. What is Sparsity?}
     \begin{block}{Conditional Computation}
     Sparsity uses the idea of \textbf{conditional computation}. While in dense models all parameters are used for all inputs, sparsity allows us to only run some parts of the whole system.
     \end{block}
@@ -128,7 +127,7 @@
     \end{alertblock}
 \end{frame}
 
-\begin{frame}{What is Mixture-of-Experts (MoE)?}
+\begin{frame}{2. What is Mixture-of-Experts (MoE)?}
     \begin{block}{Definition}
     MoE is an architecture that combines multiple expert models to achieve high capacity efficiently by routing each input to a small subset of experts.
     MoE leverages sparsity by routing tokens to specific experts, enabling conditional computation without activating all parameters.
@@ -143,7 +142,7 @@
     \end{block}
 \end{frame}
 
-\begin{frame}{MoE Architecture Details}
+\begin{frame}{2. MoE Architecture Details}
     \begin{columns}[T]
         \column{0.5\textwidth}
         \raggedright
@@ -170,7 +169,7 @@
     \end{columns}
 \end{frame}
 
-\begin{frame}{MoE Architecture in MegaBlocks}
+\begin{frame}{2. MoE Architecture in MegaBlocks}
     \begin{center}
     \includegraphics[width=0.95\textwidth]{images/megablocks_moe.png}
     
@@ -178,7 +177,7 @@
     \end{center}
 \end{frame}
 
-\begin{frame}{So Why Dynamic?}
+\begin{frame}{2. So Why Dynamic?}
     \begin{block}{What is Dynamic Routing?}
     \footnotesize
     Dynamic routing is a mechanism where the set of selected experts depends on the input. 
@@ -198,7 +197,7 @@
     
 \end{frame}
 
-\begin{frame}{Expert Parallelism}
+\begin{frame}{2. Expert Parallelism}
     \begin{center}
     \includegraphics[width=0.75\textwidth]{images/expert_parellelism.png}
     
@@ -207,7 +206,8 @@
     
 \end{frame}
 
-\begin{frame}[shrink]{Prior MoE Transformer Training}
+\section{Prior Work}
+\begin{frame}[shrink]{3. Prior MoE Transformer Training}
     \begin{columns}[T]
         \column{0.55\textwidth}
         \raggedright
@@ -248,7 +248,7 @@
     \end{columns}
 \end{frame}
 
-\begin{frame}{Expert Capacity Factor}
+\begin{frame}{3. Expert Capacity Factor}
     \begin{columns}[T]
         \column{0.5\textwidth}
         \raggedright
@@ -273,7 +273,8 @@
     \end{columns}
 \end{frame}
 
-\begin{frame}{Idea: Block Diagonal Reformulation (1)}
+\section{Idea}
+\begin{frame}{4. Idea: Block Diagonal Reformulation (1)}
     \begin{center}
     \includegraphics[width=0.85\textwidth]{images/block-diagonal.png}
     
@@ -285,7 +286,7 @@
     \end{center}
 \end{frame}
 
-\begin{frame}{Idea: Block Diagonal Reformulation (2)}
+\begin{frame}{4. Idea: Block Diagonal Reformulation (2)}
     \begin{center}
     \includegraphics[width=0.85\textwidth]{images/load-imbalanced-routing.png}
     
@@ -297,7 +298,7 @@
     \end{center}
 \end{frame}
 
-\begin{frame}[shrink]{Recap: Sparse Matrix Product Notation}
+\begin{frame}[shrink]{4. Recap: Sparse Matrix Product Notation}
     \begin{block}{Notation System}
     \footnotesize
     Borrowed from Triton (Tillet et al., 2019) to describe sparse/dense matrix multiplication operations
@@ -324,20 +325,18 @@
     \end{block}
 \end{frame}
 
-\begin{frame}[fragile]{dMoE Forward Pass Pseudocode}
+\begin{frame}[fragile]{4. dMoE (dropless MoE) Forward Pass Pseudocode}
     \begin{block}{MegaBlocks dMoE Implementation}
     \lstset{style=pythonstyle}
     \begin{lstlisting}
 # x.shape: (num_tokens, hidden_size)
 def dmoe_forward(self, x):
     # (1) Assign tokens to experts.
-    #
     # indices.shape: (num_tokens)
     # weights.shape: (num_tokens)
     indices, weights = router(x)
 
     # (2) Create the sparse matrix topology.
-    #
     # This describes the matrix in Figure of Block Diagonal Reformulation slide.
     topology = make_topology(indices)
 
@@ -345,7 +344,6 @@ def dmoe_forward(self, x):
     x = padded_gather(x, indices)
 
     # (4): Compute the expert layers.
-    #
     # inner_dim = ffn_hidden_size * num_experts
     # self.w1.shape: (hidden_size, inner_dim)
     # self.w1.shape: (inner_dim, hidden_size)
@@ -359,9 +357,63 @@ def dmoe_forward(self, x):
     \end{block}
 \end{frame}
 
-\section{Content}
+\begin{frame}[fragile]{4. dMoE (dropless MoE) Expert Computation}
+    \begin{block}{Expert Layer Computation Details}
+    \footnotesize
+    \begin{itemize}
+        \item SDD (Sparse-Dense-Dense) operation for the first layer: $x = \text{SDD}(x, W_1, \text{topology})$
+        \item DSD (Dense-Sparse-Dense) operation for the second layer: $x = \text{DSD}(x, W_2)$
+    \end{itemize}
+    \end{block}
+    
+    \begin{center}
+    \includegraphics[width=0.75\textwidth]{images/expert_computation.png}
+    
+    \tiny Figure: Expert computation in dMoE using block-sparse operations.
+    \end{center}
+\end{frame}
 
-\begin{frame}{MegaBlocks Approach}
+\begin{frame}[fragile]{4. Efficient Block-Sparse Kernels for MoEs}
+    
+    \begin{columns}[t]
+    \begin{column}{0.48\textwidth}
+        \begin{block}{Forward Pass}
+        \footnotesize
+        \begin{itemize}
+            \item First layer: \textbf{SDD}
+            \item Second layer: \textbf{DSD}
+        \end{itemize}
+        \end{block}
+    \end{column}
+    
+    \begin{column}{0.48\textwidth}
+        \begin{block}{Backward Pass}
+        \footnotesize
+        \textbf{Second Layer:}
+        \begin{itemize}
+            \item Data gradient: $\text{SDD}^T$
+            \item Weight gradient: $\text{DS}^T\text{D}$
+        \end{itemize}
+        \textbf{First Layer:}
+        \begin{itemize}
+            \item Data gradient: $\text{DSD}^T$
+            \item Weight gradient: $\text{DD}^T\text{S}$
+        \end{itemize}
+        \end{block}
+    \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{4. Tile Size Selection Experiments}
+
+    \begin{center}
+    \includegraphics[width=0.6\textwidth]{images/moe_figure4.png}
+    
+    \tiny Figure: Performance comparison across different tile sizes. Optimal tile size balances computational efficiency and memory overhead.
+    \end{center}
+\end{frame}
+
+\begin{frame}{4. MegaBlocks Approach}
     \begin{block}{One Liner Summary}
     Reformulate MoE computation in terms of \textbf{block-sparse operations}
     \end{block}
@@ -379,17 +431,261 @@ def dmoe_forward(self, x):
     \end{block}
 \end{frame}
 
-\begin{frame}{Conclusion}
-\begin{itemize}
-    \item MegaBlocks presents an efficient system for MoE training on GPUs
-    \item Block-sparse operations eliminate the quality-efficiency tradeoff
-    \item Significant performance improvements over existing frameworks
-    \item Enables scalable MoE training without token dropping
-\end{itemize}
+\section{Implementation Details}
+
+\begin{frame}{5. Block-Sparse Kernels for MoEs}
+
+\centering
+\vspace{0.5cm}
+
+\renewcommand{\arraystretch}{1.4}
+\setlength{\tabcolsep}{10pt}
+
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Feature} & \textbf{cuSPARSE} & \textbf{Triton Blocksparse} \\
+\hline
+\textbf{Large Blocks} & {\Large \checkmark} & {\Large \checkmark} \\
+\hline
+\textbf{Transposition} & {\Large \textcolor{red}{$\times$}} & {\Large \checkmark} \\
+\hline
+\textbf{Load Imbalance} & {\Large \textcolor{red}{$\times$}} & {\Large \checkmark} \\
+\hline
+\textbf{Fast Construction} & {\Large \textcolor{red}{$\times$}} & {\Large \textcolor{red}{$\times$}} \\
+\hline
+\end{tabular}
+
+
+\end{frame}
+
+\begin{frame}{5. Why These Features Matter}
+    \begin{block}{Large Blocks}
+    For \textbf{high throughput}: larger blocks enable better GPU utilization and performance
+    \end{block}
+    
+    \begin{block}{Transposition}
+    For \textbf{backward pass}: transpose operations are essential for efficient gradient computation
+    \end{block}
+    
+    \begin{block}{Load Imbalance}
+    \textbf{Load imbalance}: each expert processes different token counts. \\
+    For \textbf{no token dropping}: must handle unbalanced expert assignments.
+    \end{block}
+    
+    \begin{block}{Fast Construction}
+    For \textbf{changes every use}: sparse pattern changes dynamically per forward/backward pass
+    \end{block}
+\end{frame}
+
+\begin{frame}{5. Key Issues with Existing Libraries}
+    \begin{alertblock}{cuSPARSE Limitations}
+    \begin{itemize}
+        \item No transpose support
+        \item ELLPACK format not suitable for dynamic patterns
+        \begin{itemize}
+            \scriptsize
+            \item ELLPACK: fixed-width sparse format assuming uniform row length
+            \item Cannot efficiently handle varying expert assignment patterns
+        \end{itemize}
+        \item \textbf{Not an option for MoE training}
+    \end{itemize}
+    \end{alertblock}
+    
+    \begin{alertblock}{Triton Blocksparse Limitations}
+    \begin{itemize}
+        \item Expensive preprocessing required
+        \item \textbf{5--10x slower than dense if not amortized}
+        \begin{itemize}
+            \scriptsize
+            \item Amortized: spreading preprocessing cost over many uses
+            \item MoE routing changes every iteration, so no amortization possible
+        \end{itemize}
+        \item Cannot reconstruct pattern efficiently every iteration
+    \end{itemize}
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]{5. Their Solution: Hybrid Block Sparse Format}
+    \begin{block}{Kernel Design for Block-Sparse Operations}
+    \scriptsize
+    Extended NVIDIA's CUTLASS GEMM framework to directly handle block-sparse matrices.
+    \end{block}
+    
+    \begin{columns}[t]
+    \begin{column}{0.48\textwidth}
+        \begin{block}{Hybrid BCSR-COO}
+        \scriptsize
+        \textbf{BCSR:} Blocked Compressed Sparse Row \\
+        \textbf{BCOO:} Blocked Coordinate Format
+        
+        \vspace{0.1cm}
+        \textbf{Problem:} SDD needs output block coordinates upfront.
+        
+        \textbf{Solution:} Materialize row indices
+        \begin{itemize}
+            \scriptsize
+            \item O(1) coordinate lookup
+            \item ~0.024\% overhead (128×128)
+            \item Maintains row-order access
+        \end{itemize}
+        \end{block}
+    \end{column}
+    
+    \begin{column}{0.48\textwidth}
+        \begin{block}{Transpose Indices}
+        \scriptsize
+        \textbf{Problem:} Transpose access expensive in BCSR.
+        
+        \textbf{Solution:} Index array (no value copy)
+        \begin{itemize}
+            \scriptsize
+            \item Points to offset in value array
+            \item Indirect transposed access
+            \item Minimal memory overhead
+        \end{itemize}
+        \end{block}
+    \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{5. Hybrid Block Sparse Format Illustration}
+    \begin{center}
+    \includegraphics[width=0.65\textwidth]{images/moe_figure5.png}
+    \end{center}
+    \vspace{-0.2cm}
+    \tiny Figure: Hybrid blocked-CSR-COO format with transpose indices.
+\end{frame}
+
+\section{Experimental Results}
+
+\begin{frame}{6. Experimental Evaluation}
+    \begin{block}{Three Key Experiments}
+    \footnotesize
+    This work evaluates MegaBlocks through three different experimental setups:
+    \end{block}
+    
+    \vspace{0.3cm}
+    
+    \begin{enumerate}
+        \item \textbf{MoE Training Without Dropping Tokens}
+        
+        \vspace{0.2cm}
+        
+        \item \textbf{MoE Training With Token Dropping}
+        
+        \vspace{0.2cm}
+        
+        \item \textbf{Block-Sparse Matrix Multiplication Performance}
+        \begin{itemize}
+            \footnotesize
+            \item Benchmarking the custom block-sparse kernels
+        \end{itemize}
+    \end{enumerate}
+\end{frame}
+
+
+\begin{frame}{6. Evaluation}
+    \begin{block}{Implementation}
+    \scriptsize
+    MegaBlocks is built on Megatron-LM + PyTorch.
+    \end{block}
+    
+    \begin{block}{Models}
+    \scriptsize
+    Transformers-MoEs with 64-experts and top-1 routing.
+    \end{block}
+    
+    \begin{block}{Baselines}
+    \scriptsize
+    \textbf{MoE:} Tutel (+ Megatron-LM) \\
+    \textbf{Dense:} Megatron-LM
+    \end{block}
+    
+    \begin{block}{Training}
+    \scriptsize
+    10B tokens from The Pile on 8x A100 GPUs. \\
+    Data parallelism for Transformers, 8-way expert model parallelism for MoE layers. \\
+    capacity\_factor=\{1, 1.5, 2.0\} for MoE baselines.
+    \end{block}
+\end{frame}
+
+\begin{frame}{6. Model Configurations}
+    \begin{table}
+    \scriptsize
+    \centering
+    \caption{Baseline Transformer Models}
+    \vspace{-0.1cm}
+    \begin{tabular}{lcccc}
+    \hline
+    \textbf{Model} & \textbf{h\_size} & \textbf{layers} & \textbf{Weights(M)} & \textbf{GFLOPs} \\
+    \hline
+    XS & 512 & 6 & 46 & 316 \\
+    Small & 768 & 12 & 125 & 879 \\
+    Medium & 1024 & 24 & 356 & 2487 \\
+    Large & 1536 & 24 & 760 & 5122 \\
+    XL & 2048 & 24 & 1316 & 8684 \\
+    \hline
+    \end{tabular}
+    \end{table}
+    
+    \vspace{0.3cm}
+    
+    \begin{table}
+    \scriptsize
+    \centering
+    \caption{Transformer-MoE Models}
+    \vspace{-0.1cm}
+    \begin{tabular}{lcccc}
+    \hline
+    \textbf{MoE} & \textbf{num\_exp} & \textbf{top\_k} & \textbf{Weights(M)} & \textbf{GFLOPs} \\
+    \hline
+    XS & 64 & 1 & 839 & 316 \\
+    Small & 64 & 1 & 3,693 & 879 \\
+    Medium & 64 & 1 & 13,041 & 2487 \\
+    \hline
+    \end{tabular}
+    \end{table}
+\end{frame}
+
+\begin{frame}{6. Experiment 1: MoE Training Without Dropping Tokens}
+    \begin{center}
+    \includegraphics[width=0.80\textwidth]{images/moe_figure7.png}
+    \end{center}
+    \vspace{-0.2cm}
+    \tiny Figure 7: Performance comparison of dropless MoE training with MegaBlocks.
+\end{frame}
+
+\begin{frame}{6. Experiment 2: MoE Training With Token Dropping}
+    \begin{center}
+    \includegraphics[width=0.80\textwidth]{images/moe_figure8.png}
+    \end{center}
+    \vspace{-0.2cm}
+    \tiny Figure 8: Comparison with traditional token-dropping approaches.
+\end{frame}
+
+\begin{frame}{6. Experiment 3: Block-Sparse Matrix Multiplication Performance}
+    \begin{center}
+    \includegraphics[width=0.90\textwidth]{images/moe_figure9.png}
+    \end{center}
+    \vspace{-0.3cm}
+    \tiny Figure 9: Microbenchmark results of custom block-sparse kernels.
+    
+    \vspace{0.2cm}
+    
+    \begin{alertblock}{Observed Overhead in Weight Gradients}
+    \scriptsize
+    \textbf{DSTD operation} (weight gradient with transposed sparse operand) shows overhead:
+    \begin{itemize}
+        \scriptsize
+        \item Uses \textbf{secondary index} for transpose access (no value copy/transpose)
+        \item Weak spatial locality → reduced cache utilization → lower throughput
+
+    \end{itemize}
+    \end{alertblock}
 \end{frame}
 
 \section{Discussion}
-\begin{frame}{Discussion Question}
+\begin{frame}{7. Discussion Question}
     \begin{block}{Hardware Trend vs. MoE Direction}
     MoE models use less computation relative to their model size. \\
     However, on modern GPUs, computation is becoming relatively cheap while memory is increasingly expensive.
@@ -401,8 +697,8 @@ def dmoe_forward(self, x):
     
 \end{frame}
 
-\section{References}
-\begin{frame}[allowframebreaks]{References}
+\section{Additional References}
+\begin{frame}[allowframebreaks]{Additional References}
     \bibliography{references}
 \end{frame}
 
